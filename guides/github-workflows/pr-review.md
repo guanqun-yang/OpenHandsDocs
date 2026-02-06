@@ -1,0 +1,137 @@
+<!-- Source: https://docs.openhands.dev/sdk/guides/github-workflows/pr-review -->
+
+# PR Review
+
+The reference workflow is available [here](https://github.com/OpenHands/agent-sdk/tree/main/examples/03_github_workflows/02_pr_review)!
+
+Automatically review pull requests, providing feedback on code quality, security, and best practices. Reviews can be triggered in two ways:
+
+- Requesting `openhands-agent` as a reviewer
+- Adding the `review-this` label to the PR
+
+The reference workflow triggers on either the "review-this" label or when the `openhands-agent` account is requested as a reviewer. In OpenHands organization repositories, `openhands-agent` has access, so this works as-is. In your own repositories, requesting `openhands-agent` will only work if that account is added as a collaborator or is part of a team with access. If you don't plan to grant access, use the label trigger instead, or change the condition to a reviewer handle that exists in your repo.
+
+## Quick Start
+
+1. **Copy workflow to your repository**
+
+```bash
+cp examples/03_github_workflows/02_pr_review/workflow.yml .github/workflows/pr-review.yml
+```
+
+2. **Configure secrets in GitHub**
+
+Go to GitHub Settings → Secrets and add `LLM_API_KEY` (get from https://docs.openhands.dev/openhands/usage/llms/openhands-llms).
+
+3. **(Optional) Create a `review-this` label in your repository**
+
+Go to Issues → Labels → New label and create a `review-this` label.
+
+You can also trigger reviews by requesting `openhands-agent` as a reviewer.
+
+## Features
+
+- **Fast Reviews** - Results posted on the PR in only 2 or 3 minutes
+- **Comprehensive Analysis** - Analyzes the changes given the repository context. Covers code quality, security, best practices
+- **GitHub Integration** - Posts comments directly to the PR
+
+## Security
+
+Users with write access (maintainers) can trigger reviews by requesting `openhands-agent` as a reviewer or adding the `review-this` label. Maintainers need to read the PR to make sure it's safe to run.
+
+## Reference Workflow
+
+This example is available on GitHub: `examples/03_github_workflows/02_pr_review/`
+
+```yaml
+---
+# To set this up:
+# 1. Copy this file to .github/workflows/pr-review.yml in your repository
+# 2. Add your LLM_API_KEY to the repository secrets
+# 3. Commit this file to your repository
+# 4. Trigger the review by either:
+#    - Adding the "review-this" label to any PR, OR
+#    - Requesting openhands-agent as a reviewer
+
+name: PR Review by OpenHands
+
+on:
+  pull_request:
+    types: [labeled, review_requested]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  pr-review:
+    if: |
+      github.event.label.name == 'review-this' ||
+      github.event.requested_reviewer.login == 'openhands-agent'
+    runs-on: ubuntu-latest
+    env:
+      LLM_MODEL: <YOUR_LLM_MODEL>
+      LLM_BASE_URL: <YOUR_LLM_BASE_URL>
+      REVIEW_STYLE: standard
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+      PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+      PR_HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+      REPO_NAME: ${{ github.repository }}
+    steps:
+      - name: Checkout software-agent-sdk repository
+        uses: actions/checkout@v4
+        with:
+          repository: OpenHands/software-agent-sdk
+          path: software-agent-sdk
+      - name: Checkout PR repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: pr-repo
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+      - name: Install OpenHands dependencies
+        run: |
+          uv pip install --system ./software-agent-sdk/openhands-sdk ./software-agent-sdk/openhands-tools
+      - name: Check required configuration
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          # Validates configuration...
+      - name: Run PR review
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd pr-repo
+          uv run python ../software-agent-sdk/examples/03_github_workflows/02_pr_review/agent_script.py
+      - name: Upload logs as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: openhands-pr-review-logs
+          path: |
+            *.log
+            output/
+          retention-days: 7
+```
+
+## Related Files
+
+- [Agent Script](https://github.com/OpenHands/agent-sdk/tree/main/examples/03_github_workflows/02_pr_review/agent_script.py)
+- [Workflow File](https://github.com/OpenHands/agent-sdk/tree/main/examples/03_github_workflows/02_pr_review/workflow.yml)
+- [Prompt Template](https://github.com/OpenHands/agent-sdk/tree/main/examples/03_github_workflows/02_pr_review)

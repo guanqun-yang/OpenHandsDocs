@@ -1,0 +1,200 @@
+<!-- Source: https://docs.openhands.dev/sdk/getting-started -->
+
+# Getting Started - OpenHands Docs
+
+The OpenHands SDK is a modular framework for building AI agents that interact with code, files, and system commands. Agents can execute bash commands, edit files, browse the web, and more.
+
+## Prerequisites
+
+Install the uv package manager (version 0.8.13+):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+## Installation
+
+### Step 1: Acquire an LLM API Key
+
+The SDK requires an LLM API key from any LiteLLM-supported provider. See our recommended models for best results.
+
+#### Option 1: Direct Provider
+
+Bring your own API key from providers like:
+- Anthropic
+- OpenAI
+- Other LiteLLM-supported providers
+
+Example:
+
+```bash
+export LLM_API_KEY="your-api-key"
+uv run python examples/01_standalone_sdk/01_hello_world.py
+```
+
+#### Option 2: OpenHands Cloud (Recommended)
+
+Sign up for OpenHands Cloud and get an LLM API key from the API keys page. This gives you access to models verified to work well with OpenHands, with no markup.
+
+Example:
+
+```bash
+export LLM_MODEL="openhands/claude-sonnet-4-5-20250929"
+uv run python examples/01_standalone_sdk/01_hello_world.py
+```
+
+#### Option 3: ChatGPT Subscription
+
+If you have a ChatGPT Plus or Pro subscription, you can use `LLM.subscription_login()` to authenticate with your ChatGPT account and access Codex models without consuming API credits.
+
+```python
+from openhands.sdk import LLM
+llm = LLM.subscription_login(vendor="openai", model="gpt-5.2-codex")
+```
+
+**Tip:** Model name prefixes depend on your provider
+
+- If you bring your own provider key (Anthropic/OpenAI/etc.), use that provider's model name, e.g. `anthropic/claude-sonnet-4-5-20250929`
+- OpenHands supports dozens of models, you can choose the model you want to try.
+- If you use OpenHands Cloud, use openhands/-prefixed models, e.g. `openhands/claude-sonnet-4-5-20250929`
+
+Many examples in the docs read the model from the `LLM_MODEL` environment variable. You can set it like:
+
+```bash
+export LLM_MODEL="openhands/claude-sonnet-4-5-20250929" # for OpenHands Provider
+```
+
+Set Your API Key:
+
+```bash
+export LLM_API_KEY=your-api-key-here
+```
+
+### Step 2: Install the SDK
+
+#### Option 1: Install via PyPI
+
+```bash
+pip install openhands-sdk # Core SDK (openhands.sdk)
+pip install openhands-tools # Built-in tools (openhands.tools)
+# Optional: required for sandboxed workspaces in Docker or remote servers
+pip install openhands-workspace # Workspace backends (openhands.workspace)
+pip install openhands-agent-server # Remote agent server (openhands.agent_server)
+```
+
+#### Option 2: Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/OpenHands/software-agent-sdk.git
+cd software-agent-sdk
+
+# Install dependencies and setup development environment
+make build
+```
+
+### Step 3: Run Your First Agent
+
+Here's a complete example that creates an agent and asks it to perform a simple task:
+
+```python
+# examples/01_standalone_sdk/01_hello_world.py
+import os
+from openhands.sdk import LLM, Agent, Conversation, Tool
+from openhands.tools.file_editor import FileEditorTool
+from openhands.tools.task_tracker import TaskTrackerTool
+from openhands.tools.terminal import TerminalTool
+
+llm = LLM(
+    model=os.getenv("LLM_MODEL", "anthropic/claude-sonnet-4-5-20250929"),
+    api_key=os.getenv("LLM_API_KEY"),
+    base_url=os.getenv("LLM_BASE_URL", None),
+)
+
+agent = Agent(
+    llm=llm,
+    tools=[
+        Tool(name=TerminalTool.name),
+        Tool(name=FileEditorTool.name),
+        Tool(name=TaskTrackerTool.name),
+    ],
+)
+
+cwd = os.getcwd()
+conversation = Conversation(agent=agent, workspace=cwd)
+conversation.send_message("Write 3 facts about the current project into FACTS.txt.")
+conversation.run()
+
+print("All done!")
+```
+
+Run the example:
+
+```bash
+# Using a direct provider key (Anthropic/OpenAI/etc.)
+uv run python examples/01_standalone_sdk/01_hello_world.py
+```
+
+```bash
+# Using OpenHands Cloud
+export LLM_MODEL="openhands/claude-sonnet-4-5-20250929"
+uv run python examples/01_standalone_sdk/01_hello_world.py
+```
+
+You should see the agent understand your request, explore the project, and create a file with facts about it.
+
+## Core Concepts
+
+- **Agent:** An AI-powered entity that can reason, plan, and execute actions using tools.
+- **Tools:** Capabilities like executing bash commands, editing files, or browsing the web.
+- **Workspace:** The execution environment where agents operate (local, Docker, or remote).
+- **Conversation:** Manages the interaction lifecycle between you and the agent.
+
+## Basic Workflow
+
+1. Configure LLM: Choose model and provide API key
+2. Create Agent: Use preset or custom configuration
+3. Add Tools: Enable capabilities (bash, file editing, etc.)
+4. Start Conversation: Create conversation context
+5. Send Message: Provide task description
+6. Run Agent: Agent executes until task completes or stops
+7. Get Result: Review agent's output and actions
+
+## Try More Examples
+
+The repository includes 24+ examples demonstrating various capabilities:
+
+```bash
+# Simple hello world
+uv run python examples/01_standalone_sdk/01_hello_world.py
+
+# Custom tools
+uv run python examples/01_standalone_sdk/02_custom_tools.py
+
+# With skills
+uv run python examples/01_standalone_sdk/03_activate_microagent.py
+
+# See all examples
+ls examples/01_standalone_sdk/
+```
+
+## Next Steps
+
+### Explore Documentation
+
+- **SDK Architecture** - Deep dive into components
+- **Tool System** - Available tools
+- **Workspace Architecture** - Execution environments
+- **LLM Configuration** - Deep dive into language model configuration
+
+### Build Custom Solutions
+
+- **Custom Tools** - Create custom tools to expand agent capabilities
+- **MCP Integration** - Connect to external tools via Model Context Protocol
+- **Docker Workspaces** - Sandbox agent execution in containers
+
+### Get Help
+
+- **Slack Community** - Ask questions and share projects
+- **GitHub Issues** - Report bugs or request features
+- **Example Directory** - Browse working code samples
